@@ -36,6 +36,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      TOFU_TFVARS_SECRET: ${{ secrets.TOFU_TFVARS }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,12 +57,10 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Write terraform.tfvars (optional)
-        if: ${{ secrets.TOFU_TFVARS != '' }}
+        if: ${{ env.TOFU_TFVARS_SECRET != '' }}
         working-directory: ${{ env.TOFU_WORKDIR }}
         run: |
-          cat <<'EOF' > terraform.tfvars
-          ${{ secrets.TOFU_TFVARS }}
-          EOF
+          printf '%s' "$TOFU_TFVARS_SECRET" > terraform.tfvars
 
       - name: OpenTofu init
         working-directory: ${{ env.TOFU_WORKDIR }}
@@ -92,6 +92,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      TOFU_TFVARS_SECRET: ${{ secrets.TOFU_TFVARS }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -117,12 +119,10 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Write terraform.tfvars (optional)
-        if: ${{ secrets.TOFU_TFVARS != '' }}
+        if: ${{ env.TOFU_TFVARS_SECRET != '' }}
         working-directory: ${{ env.TOFU_WORKDIR }}
         run: |
-          cat <<'EOF' > terraform.tfvars
-          ${{ secrets.TOFU_TFVARS }}
-          EOF
+          printf '%s' "$TOFU_TFVARS_SECRET" > terraform.tfvars
 
       - name: OpenTofu init
         working-directory: ${{ env.TOFU_WORKDIR }}
