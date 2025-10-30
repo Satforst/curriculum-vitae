@@ -171,10 +171,11 @@ resource "helm_release" "cert_manager" {
   version    = "v1.13.3"
   namespace  = kubernetes_namespace.cert_manager[count.index].metadata[0].name
 
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
+  values = [
+    yamlencode({
+      installCRDs = true
+    })
+  ]
 
   depends_on = [
     kubernetes_namespace.cert_manager

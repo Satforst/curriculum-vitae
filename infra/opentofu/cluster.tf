@@ -1,7 +1,7 @@
 locals {
   resource_suffix     = random_id.naming.hex
-  sanitized_project   = regexreplace(lower(var.project_name), "[^a-z0-9-]", "")
-  project_slug        = length(local.sanitized_project) > 0 ? substr(local.sanitized_project, 0, 20) : "app"
+  normalized_project  = replace(replace(replace(lower(var.project_name), " ", "-"), "_", "-"), ".", "-")
+  project_slug        = length(local.normalized_project) > 0 ? substr(local.normalized_project, 0, 20) : "app"
   cluster_name        = "${var.project_name}-gke-${local.resource_suffix}"
   network_name        = "${var.project_name}-vpc-${local.resource_suffix}"
   subnet_name         = "${var.project_name}-subnet-${local.resource_suffix}"
@@ -49,8 +49,6 @@ resource "google_compute_network" "main" {
   routing_mode            = "REGIONAL"
   project                 = var.gcp_project_id
 
-  labels = local.labels
-
   depends_on = [
     google_project_service.required["compute.googleapis.com"]
   ]
@@ -77,8 +75,6 @@ resource "google_compute_subnetwork" "primary" {
   depends_on = [
     google_project_service.required["compute.googleapis.com"]
   ]
-
-  labels = local.labels
 }
 
 resource "google_compute_router" "egress" {
@@ -224,11 +220,6 @@ resource "google_container_cluster" "main" {
     enabled = true
   }
 
-  security_posture {
-    mode               = "BASIC"
-    vulnerability_mode = "VULNERABILITY_BASIC"
-  }
-
   addons_config {
     http_load_balancing {
       disabled = false
@@ -310,8 +301,6 @@ resource "google_compute_address" "ingress" {
   region       = var.gcp_region
   address_type = "EXTERNAL"
   network_tier = "PREMIUM"
-
-  labels = local.labels
 
   depends_on = [
     google_project_service.required["compute.googleapis.com"]

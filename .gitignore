@@ -207,3 +207,5 @@ marimo/_lsp/
 __marimo__/
 
 .github/workflows/TOFU_TFVARS.template
+infra/opentofu/.terraform
+infra/opentofu/.terraform.lock.hcl
