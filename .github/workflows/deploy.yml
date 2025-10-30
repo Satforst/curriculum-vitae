@@ -1,0 +1,135 @@
+name: OpenTofu Deploy
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/deploy.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Spustit tofu apply (true = apply, false = pouze plan)"
+        required: true
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TOFU_WORKDIR: infra/opentofu
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  plan:
+    name: tofu plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Write terraform.tfvars (optional)
+        if: ${{ secrets.TOFU_TFVARS != '' }}
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: |
+          cat <<'EOF' > terraform.tfvars
+          ${{ secrets.TOFU_TFVARS }}
+          EOF
+
+      - name: OpenTofu init
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: tofu init -input=false
+
+      - name: OpenTofu validate
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: tofu validate
+
+      - name: OpenTofu plan
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: tofu plan -out=tfplan
+
+      - name: Upload plan artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tofu-plan
+          path: |
+            ${{ env.TOFU_WORKDIR }}/tfplan
+            ${{ env.TOFU_WORKDIR }}/.terraform.lock.hcl
+          if-no-files-found: ignore
+
+  apply:
+    name: tofu apply
+    needs: plan
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.apply == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tofu-plan
+          path: ${{ env.TOFU_WORKDIR }}
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Write terraform.tfvars (optional)
+        if: ${{ secrets.TOFU_TFVARS != '' }}
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: |
+          cat <<'EOF' > terraform.tfvars
+          ${{ secrets.TOFU_TFVARS }}
+          EOF
+
+      - name: OpenTofu init
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: tofu init -input=false
+
+      - name: OpenTofu plan (refresh)
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: tofu plan -out=tfplan
+
+      - name: OpenTofu apply
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: tofu apply -auto-approve tfplan
