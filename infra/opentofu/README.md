@@ -154,3 +154,6 @@ Celkem tedy cca **$320 / měsíc** při minimálním vytížení. Využijte comm
 2. Zapojte `External Secrets Operator`, pokud chcete Vault → K8s synchronizaci bez anotací.
 3. Definujte alerting kanály (PagerDuty, Slack) a metriky SLO přímo v Grafaně.
 4. Připravte zálohy pro Vault Raft storage a Elastic (snapshoty do GCS).
+
+
+uprava kvuli actions
