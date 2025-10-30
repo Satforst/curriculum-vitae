@@ -311,6 +311,13 @@ data "google_dns_managed_zone" "primary" {
   name    = var.dns_managed_zone
   project = local.dns_project_id
 }
+resource "google_dns_managed_zone" "primary" {
+  name        = var.dns_managed_zone  # tohle je vnitřní název v GCP
+  dns_name    = "${var.domain_name}."      # tvoje doména, MUSÍ mít koncovou tečku
+  project = local.dns_project_id
+  description = "Public zone for machacek.karel.guru"
+  visibility  = "public"
+}
 
 resource "google_dns_record_set" "app" {
   name         = "${var.domain_name}."
