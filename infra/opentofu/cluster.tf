@@ -153,7 +153,6 @@ resource "google_container_cluster" "main" {
   subnetwork                = google_compute_subnetwork.primary.id
   remove_default_node_pool  = true
   initial_node_count        = 1
-  datapath_provider         = "ADVANCED_DATAPATH"
   default_max_pods_per_node = 110
   enable_shielded_nodes     = true
   deletion_protection       = false
