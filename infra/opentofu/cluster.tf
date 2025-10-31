@@ -1,17 +1,40 @@
 locals {
-  resource_suffix     = random_id.naming.hex
-  normalized_project  = replace(replace(replace(lower(var.project_name), " ", "-"), "_", "-"), ".", "-")
-  project_slug        = length(local.normalized_project) > 0 ? substr(local.normalized_project, 0, 20) : "app"
-  cluster_name        = "${var.project_name}-gke-${local.resource_suffix}"
-  network_name        = "${var.project_name}-vpc-${local.resource_suffix}"
-  subnet_name         = "${var.project_name}-subnet-${local.resource_suffix}"
-  pod_range_name      = "${var.project_name}-pods-${local.resource_suffix}"
-  services_range_name = "${var.project_name}-svc-${local.resource_suffix}"
-  node_pool_name      = "${var.project_name}-pool-${local.resource_suffix}"
-  router_name         = "${var.project_name}-router-${local.resource_suffix}"
-  nat_name            = "${var.project_name}-nat-${local.resource_suffix}"
-  static_ip_name      = "${var.project_name}-ingress-ip-${local.resource_suffix}"
-  node_sa_id          = substr("${local.project_slug}-gke-nodes-${local.resource_suffix}", 0, 30)
+  sanitized_project = trim(
+    replace(
+      replace(
+        replace(
+          replace(
+            replace(
+              lower(var.project_name),
+              " ",
+              "-"
+            ),
+            "_",
+            "-"
+          ),
+          ".",
+          "-"
+        ),
+        "/",
+        "-"
+      ),
+      ":",
+      "-"
+    ),
+    "-"
+  )
+  project_slug        = length(local.sanitized_project) > 0 ? local.sanitized_project : "app"
+  cluster_name        = "${local.project_slug}-gke"
+  network_name        = "${local.project_slug}-vpc"
+  subnet_name         = "${local.project_slug}-subnet"
+  pod_range_name      = "${local.project_slug}-pods"
+  services_range_name = "${local.project_slug}-svc"
+  node_pool_name      = "${local.project_slug}-pool"
+  router_name         = "${local.project_slug}-router"
+  nat_name            = "${local.project_slug}-nat"
+  static_ip_name      = "${local.project_slug}-ingress-ip"
+  node_sa_id          = substr("${replace(local.project_slug, "-", "")}-gke-nodes", 0, 30)
+  node_sa_email       = "${local.node_sa_id}@${var.gcp_project_id}.iam.gserviceaccount.com"
   dns_project_id      = coalesce(var.dns_project_id, var.gcp_project_id)
   labels              = merge({ project = var.project_name }, var.tags)
   node_locations      = length(var.gcp_zones) > 0 ? var.gcp_zones : null
@@ -30,10 +53,6 @@ locals {
     "iam.googleapis.com",
     "cloudresourcemanager.googleapis.com"
   ]
-}
-
-resource "random_id" "naming" {
-  byte_length = 2
 }
 
 resource "google_project_service" "required" {
@@ -157,6 +176,11 @@ resource "google_container_cluster" "main" {
   enable_shielded_nodes     = true
   deletion_protection       = false
 
+  node_config {
+    disk_size_gb = var.gke_node_disk_size_gb
+    disk_type    = var.gke_node_disk_type
+  }
+
   release_channel {
     channel = var.gke_release_channel
   }
@@ -268,7 +292,7 @@ resource "google_container_node_pool" "primary" {
       "https://www.googleapis.com/auth/cloud-platform"
     ]
 
-    tags = concat(["gke-node"], var.node_tags)
+    tags = distinct(concat(["gke-node"], var.node_tags))
 
     metadata = {
       disable-legacy-endpoints = "true"
