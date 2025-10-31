@@ -159,5 +159,16 @@ jobs:
         run: tofu plan -out=tfplan
 
       - name: OpenTofu apply
+        id: apply
+        continue-on-error: true
         working-directory: ${{ env.TOFU_WORKDIR }}
         run: tofu apply -auto-approve tfplan
+
+      - name: OpenTofu destroy (rollback)
+        if: ${{ steps.apply.outcome == 'failure' }}
+        working-directory: ${{ env.TOFU_WORKDIR }}
+        run: tofu destroy -auto-approve
+
+      - name: Mark job as failed
+        if: ${{ steps.apply.outcome == 'failure' }}
+        run: exit 1
