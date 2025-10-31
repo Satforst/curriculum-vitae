@@ -181,6 +181,12 @@ resource "google_container_cluster" "main" {
     disk_type    = var.gke_node_disk_type
   }
 
+  lifecycle {
+    ignore_changes = [
+      node_config
+    ]
+  }
+
   release_channel {
     channel = var.gke_release_channel
   }
