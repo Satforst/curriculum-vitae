@@ -260,6 +260,7 @@ resource "google_container_node_pool" "primary" {
   node_config {
     machine_type    = var.gke_node_machine_type
     disk_size_gb    = var.gke_node_disk_size_gb
+    disk_type       = var.gke_node_disk_type
     preemptible     = false
     service_account = google_service_account.gke_nodes.email
 

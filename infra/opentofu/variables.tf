@@ -76,7 +76,13 @@ variable "gke_node_machine_type" {
 variable "gke_node_disk_size_gb" {
   description = "Velikost datového disku pro nody (v GB)."
   type        = number
-  default     = 100
+  default     = 30
+}
+
+variable "gke_node_disk_type" {
+  description = "Typ persistentního disku pro nody (pd-standard, pd-ssd, balanced)."
+  type        = string
+  default     = "pd-standard"
 }
 
 variable "gke_min_node_count" {
