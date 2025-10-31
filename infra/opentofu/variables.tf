@@ -155,6 +155,12 @@ variable "enable_cert_manager" {
   default     = true
 }
 
+variable "enable_web" {
+  description = "Povoleni nasazeni ukazkove webove aplikace."
+  type        = bool
+  default     = true
+}
+
 variable "vault_helm_chart_version" {
   description = "Verze Helm chartu HashiCorp Vault."
   type        = string

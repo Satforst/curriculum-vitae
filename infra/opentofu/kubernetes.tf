@@ -1,4 +1,6 @@
 resource "kubernetes_namespace" "web" {
+  count = var.enable_web ? 1 : 0
+
   metadata {
     name = "web"
     labels = {
@@ -40,9 +42,11 @@ resource "kubernetes_namespace" "cert_manager" {
 }
 
 resource "kubernetes_network_policy" "web_zero_trust" {
+  count = var.enable_web ? 1 : 0
+
   metadata {
     name      = "restrict-web"
-    namespace = kubernetes_namespace.web.metadata[0].name
+    namespace = kubernetes_namespace.web[count.index].metadata[0].name
   }
 
   spec {

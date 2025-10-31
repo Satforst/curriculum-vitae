@@ -11,9 +11,11 @@ locals {
 }
 
 resource "kubernetes_config_map" "web_content" {
+  count = var.enable_web ? 1 : 0
+
   metadata {
     name      = "web-content"
-    namespace = kubernetes_namespace.web.metadata[0].name
+    namespace = kubernetes_namespace.web[count.index].metadata[0].name
     labels = {
       "app" = "web"
     }
@@ -49,9 +51,11 @@ resource "kubernetes_config_map" "web_content" {
 }
 
 resource "kubernetes_deployment" "web" {
+  count = var.enable_web ? 1 : 0
+
   metadata {
     name      = "web"
-    namespace = kubernetes_namespace.web.metadata[0].name
+    namespace = kubernetes_namespace.web[count.index].metadata[0].name
     labels = {
       "app" = "web"
     }
@@ -148,7 +152,7 @@ resource "kubernetes_deployment" "web" {
         volume {
           name = "web-content"
           config_map {
-            name = kubernetes_config_map.web_content.metadata[0].name
+            name = kubernetes_config_map.web_content[count.index].metadata[0].name
           }
         }
 
@@ -171,9 +175,11 @@ resource "kubernetes_deployment" "web" {
 }
 
 resource "kubernetes_service" "web" {
+  count = var.enable_web ? 1 : 0
+
   metadata {
     name      = "web"
-    namespace = kubernetes_namespace.web.metadata[0].name
+    namespace = kubernetes_namespace.web[count.index].metadata[0].name
     labels = {
       "app" = "web"
     }
@@ -195,9 +201,11 @@ resource "kubernetes_service" "web" {
 }
 
 resource "kubernetes_ingress_v1" "web" {
+  count = var.enable_web ? 1 : 0
+
   metadata {
     name        = "web"
-    namespace   = kubernetes_namespace.web.metadata[0].name
+    namespace   = kubernetes_namespace.web[count.index].metadata[0].name
     annotations = local.web_ingress_annotations
   }
 
@@ -212,7 +220,7 @@ resource "kubernetes_ingress_v1" "web" {
           path_type = "Prefix"
           backend {
             service {
-              name = kubernetes_service.web.metadata[0].name
+              name = kubernetes_service.web[count.index].metadata[0].name
               port {
                 number = 80
               }

@@ -30,6 +30,27 @@ locals {
       ha = {
         enabled  = true
         replicas = 1
+        raft = {
+          enabled   = true
+          setNodeId = true
+          config    = <<-EOT
+            ui = true
+
+            listener "tcp" {
+              address         = "0.0.0.0:8200"
+              cluster_address = "0.0.0.0:8201"
+              tls_cert_file      = "/vault/userconfig/tls/tls.crt"
+              tls_key_file       = "/vault/userconfig/tls/tls.key"
+              tls_client_ca_file = "/vault/userconfig/tls/ca.crt"
+            }
+
+            storage "raft" {
+              path = "/vault/data"
+            }
+
+            service_registration "kubernetes" {}
+          EOT
+        }
       }
       dataStorage = {
         enabled = true
@@ -41,6 +62,18 @@ locals {
       }
       standalone = {
         enabled = false
+      }
+      extraVolumes = [
+        {
+          type = "secret"
+          name = "vault-server-tls"
+          path = "tls"
+        }
+      ]
+      extraEnvironmentVars = {
+        VAULT_CACERT = "/vault/userconfig/tls/ca.crt"
+        VAULT_TLSCERT = "/vault/userconfig/tls/tls.crt"
+        VAULT_TLSKEY  = "/vault/userconfig/tls/tls.key"
       }
     }
   }
@@ -132,6 +165,60 @@ locals {
       }
     }
   }
+
+  cert_manager_values = {
+    installCRDs = true
+    extraDeploy = [
+      yamlencode({
+        apiVersion = "cert-manager.io/v1"
+        kind       = "ClusterIssuer"
+        metadata = {
+          name = "letsencrypt-production"
+        }
+        spec = {
+          acme = {
+            email  = var.acme_email
+            server = "https://acme-v02.api.letsencrypt.org/directory"
+            privateKeySecretRef = {
+              name = "letsencrypt-production"
+            }
+            solvers = [{
+              dns01 = {
+                cloudDNS = {
+                  project = var.gcp_project_id
+                  serviceAccountSecretRef = {
+                    name = var.clouddns_service_account_secret_name
+                    key  = var.clouddns_service_account_secret_key
+                  }
+                }
+              }
+            }]
+          }
+        }
+      }),
+      yamlencode({
+        apiVersion = "cert-manager.io/v1"
+        kind       = "Certificate"
+        metadata = {
+          name      = "vault-server-tls"
+          namespace = "vault"
+        }
+        spec = {
+          secretName = "vault-server-tls"
+          duration   = "2160h" # 90 days
+          renewBefore = "360h" # 15 days
+          issuerRef = {
+            name = "letsencrypt-production"
+            kind = "ClusterIssuer"
+          }
+          dnsNames = [
+            "vault.vault.svc",
+            "vault.vault.svc.cluster.local"
+          ]
+        }
+      })
+    ]
+  }
 }
 
 resource "helm_release" "ingress_nginx" {
@@ -171,11 +258,7 @@ resource "helm_release" "cert_manager" {
   version    = "v1.13.3"
   namespace  = kubernetes_namespace.cert_manager[count.index].metadata[0].name
 
-  values = [
-    yamlencode({
-      installCRDs = true
-    })
-  ]
+  values = [yamlencode(local.cert_manager_values)]
 
   depends_on = [
     kubernetes_namespace.cert_manager
