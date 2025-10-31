@@ -29,7 +29,7 @@ locals {
     server = {
       ha = {
         enabled  = true
-        replicas = 3
+        replicas = 1
       }
       dataStorage = {
         enabled = true
